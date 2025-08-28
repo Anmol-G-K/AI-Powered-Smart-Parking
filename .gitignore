@@ -1,0 +1,41 @@
+# -----------------------------
+# Python
+# -----------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+# *.pkl
+*.h5
+
+# -----------------------------
+# Virtual environments
+# -----------------------------
+.venv/
+env/
+venv/
+ENV/
+
+# -----------------------------
+# Data, models, and videos
+# -----------------------------
+# Training data (optional: keep a few small sample images in repo instead)
+train_data/
+# Sample video files
+*.mp4
+# Large images you don’t want in git (keep only small reference imgs)
+*.png
+*.jpg
+*.jpeg
+
+# -----------------------------
+# Logs & misc
+# -----------------------------
+*.log
+.DS_Store
+Thumbs.db
+
+# -----------------------------
+# Dependency backups
+# -----------------------------
+requirements._old.txt
