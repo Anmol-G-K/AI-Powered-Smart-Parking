@@ -2,110 +2,141 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parking Space Detection</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <style>
-        body {
-            background-color: #f8f9fa;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parking Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css">
+  <style>
+    body {
+      background: #f4f6f9;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
 
-        .card {
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
+    .navbar {
+      background: #0d6efd;
+    }
 
-        .display-4 {
-            font-weight: bold;
-        }
+    .navbar-brand {
+      font-weight: bold;
+      color: #fff !important;
+    }
 
-        .card-title {
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
+    .card {
+      border: none;
+      border-radius: 16px;
+      transition: all 0.2s ease-in-out;
+    }
 
-        .container {
-            max-width: 900px;
-        }
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.1);
+    }
 
-        .stats-icon {
-            font-size: 3rem;
-            margin-right: 10px;
-        }
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: bold;
+    }
 
-        .footer {
-            margin-top: 50px;
-            text-align: center;
-            padding: 20px;
-            background-color: #343a40;
-            color: white;
-            border-radius: 8px;
-        }
-    </style>
+    .progress {
+      height: 20px;
+      border-radius: 12px;
+    }
+
+    .video-card img {
+      border-radius: 16px;
+      object-fit: cover;
+      width: 100%;
+    }
+
+    .dashboard-section {
+      margin-top: 30px;
+    }
+  </style>
 </head>
 
 <body>
-    <div class="container text-center mt-5">
-        <h1 class="mb-4 text-primary">🚗 Parking Space Detection</h1>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg">
+    <div class="container-fluid">
+      <span class="navbar-brand">🚗 Parking Dashboard</span>
+    </div>
+  </nav>
 
-        <div class="row g-4">
-            <div class="col-md-6">
-                <div class="card text-white bg-success">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="stats-icon me-3">
-                            <i class="bi bi-check-circle-fill"></i>
-                        </div>
-                        <div>
-                            <h4 class="card-title">Free Spaces</h4>
-                            <p id="free-spaces" class="display-4">0</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card text-white bg-danger">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="stats-icon me-3">
-                            <i class="bi bi-x-circle-fill"></i>
-                        </div>
-                        <div>
-                            <h4 class="card-title">Occupied Spaces</h4>
-                            <p id="occupied-spaces" class="display-4">0</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <div class="container dashboard-section">
 
-        <div class="mt-5">
-            <div class="card">
-                <div class="card-body p-0">
-                    <img src="{{ url_for('video_feed') }}" class="img-fluid rounded" style="max-height: 500px;">
-                </div>
-            </div>
+    <!-- Stats -->
+    <div class="row g-4 text-center">
+      <div class="col-md-4">
+        <div class="card shadow-sm p-3">
+          <h6>Total Spaces</h6>
+          <div id="total-spaces" class="stat-number text-primary">0</div>
         </div>
-
-        <div class="footer mt-5">
-            <p>© 2024 Parking Space Detection - Powered by AI</p>
+      </div>
+      <div class="col-md-4">
+        <div class="card shadow-sm p-3 bg-light">
+          <h6 class="text-success">Free</h6>
+          <div id="free-spaces" class="stat-number text-success">0</div>
         </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card shadow-sm p-3 bg-light">
+          <h6 class="text-danger">Occupied</h6>
+          <div id="occupied-spaces" class="stat-number text-danger">0</div>
+        </div>
+      </div>
     </div>
 
-    <script>
-        function updateSpaceCount() {
-            $.getJSON('/space_count', function (data) {
-                $('#free-spaces').text(data.free);
-                $('#occupied-spaces').text(data.occupied);
-            });
-        }
+    <!-- Occupancy Progress -->
+    <div class="row mt-4">
+      <div class="col">
+        <div class="card shadow-sm p-3">
+          <h6>Occupancy Rate</h6>
+          <div class="progress">
+            <div id="occupancy-bar" class="progress-bar bg-danger" style="width: 0%">0%</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-        $(document).ready(function () {
-            updateSpaceCount();
-            setInterval(updateSpaceCount, 2000); // Update every 2 seconds
-        });
-    </script>
+    <!-- Video Feed -->
+    <div class="row mt-4">
+      <div class="col">
+        <div class="card shadow-sm">
+          <div class="card-body p-0">
+            <img src="{{ url_for('video_feed') }}" class="img-fluid" style="max-height: 500px;">
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css">
+  </div>
+
+  <script>
+    function updateSpaceCount() {
+      $.getJSON('/space_count', function (data) {
+        const free = data.free;
+        const occupied = data.occupied;
+        const total = free + occupied;
+
+        $('#free-spaces').text(free);
+        $('#occupied-spaces').text(occupied);
+        $('#total-spaces').text(total);
+
+        const occupancyRate = total > 0 ? Math.round((occupied / total) * 100) : 0;
+        $('#occupancy-bar')
+          .css('width', occupancyRate + '%')
+          .text(occupancyRate + '%');
+      });
+    }
+
+    $(document).ready(function () {
+      updateSpaceCount();
+      setInterval(updateSpaceCount, 2000); // update every 2 sec
+    });
+  </script>
 </body>
 
 </html>

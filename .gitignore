@@ -28,6 +28,15 @@ train_data/
 *.jpg
 *.jpeg
 
+# Documents
+*.pdf
+
+# LaTeX
+*.tex
+
+# Archives
+*.zip
+
 # -----------------------------
 # Logs & misc
 # -----------------------------
@@ -39,3 +48,8 @@ Thumbs.db
 # Dependency backups
 # -----------------------------
 requirements._old.txt
+
+# -----------------------------
+# MISC
+# -----------------------------
+MISC/

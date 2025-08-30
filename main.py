@@ -4,93 +4,110 @@ import pickle
 import numpy as np
 from keras.models import load_model
 
+# Initialize Flask app
 app = Flask(__name__)
 
-model = load_model('model_final.h5')
+# Load trained classification model
+parking_model = load_model("model_final.h5")
 
-class_dictionary = {0: 'no_car', 1: 'car'}
+# Labels corresponding to model output
+LABELS = {0: "empty", 1: "occupied"}
 
-cap = cv2.VideoCapture('car_test.mp4')
+# Video source
+video_stream = cv2.VideoCapture("car_test.mp4")
 
-with open('carposition.pkl', 'rb') as f:
-    posList = pickle.load(f)
+# Load pre-marked parking positions
+with open("carposition.pkl", "rb") as f:
+    PARKING_SPOTS = pickle.load(f)
 
-width, height = 130, 65
+# Dimensions of each parking region
+SPOT_W, SPOT_H = 130, 65
 
-def checkParkingSpace(img):
-    spaceCounter = 0
-    imgCrops = []
 
-    for pos in posList:
-        x, y = pos
-        imgCrop = img[y:y + height, x:x + width]
-        imgResize = cv2.resize(imgCrop, (48, 48))
-        imgNormalized = imgResize / 255.0
-        imgCrops.append(imgNormalized)
+def analyze_frame(frame):
+    """
+    Checks all marked parking spaces in a given frame,
+    classifies them as 'empty' or 'occupied', and draws bounding boxes.
+    Returns processed frame + counts of free and occupied spaces.
+    """
+    free_count = 0
+    crops = []
 
-    imgCrops = np.array(imgCrops)
-    predictions = model.predict(imgCrops)
+    # Extract image crops for each parking position
+    for (x, y) in PARKING_SPOTS:
+        roi = frame[y:y + SPOT_H, x:x + SPOT_W]
+        roi_resized = cv2.resize(roi, (48, 48))
+        roi_norm = roi_resized.astype("float32") / 255.0
+        crops.append(roi_norm)
 
-    for i, pos in enumerate(posList):
-        x, y = pos
-        inID = np.argmax(predictions[i])
-        label = class_dictionary[inID]
+    # Run model predictions
+    crops = np.array(crops)
+    predictions = parking_model.predict(crops)
 
-        if label == 'no_car':
-            color = (0, 255, 0)
-            thickness = 5
-            spaceCounter += 1
-            textColor = (0,0,0)
+    # Annotate the frame with bounding boxes + labels
+    for i, (x, y) in enumerate(PARKING_SPOTS):
+        pred_label = LABELS[np.argmax(predictions[i])]
+
+        if pred_label == "empty":
+            color, thickness, txt_color = (0, 255, 0), 4, (0, 0, 0)
+            free_count += 1
         else:
-            color = (0, 0, 255)
-            thickness = 2
-            textColor = (255,255,255)
+            color, thickness, txt_color = (0, 0, 255), 2, (255, 255, 255)
 
-        cv2.rectangle(img, pos, (pos[0] + width, pos[1] + height), color, thickness)
-        font_scale = 0.5
-        text_thickness = 1
-        
-        textSize = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, text_thickness)[0]
-        textX = x
-        textY = y + height - 5
-        cv2.rectangle(img, (textX, textY - textSize[1] - 5), (textX + textSize[0] + 6, textY + 2), color, -1)
-        cv2.putText(img, label, (textX + 3, textY - 3), cv2.FONT_HERSHEY_SIMPLEX, font_scale, textColor, text_thickness)
+        # Draw bounding box
+        cv2.rectangle(frame, (x, y), (x + SPOT_W, y + SPOT_H), color, thickness)
 
-    totalSpaces = len(posList)
+        # Draw label background + text
+        label_size = cv2.getTextSize(pred_label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)[0]
+        text_x, text_y = x, y + SPOT_H - 5
+        cv2.rectangle(frame,
+                      (text_x, text_y - label_size[1] - 4),
+                      (text_x + label_size[0] + 6, text_y + 2),
+                      color, -1)
+        cv2.putText(frame, pred_label, (text_x + 3, text_y - 3),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, txt_color, 1)
+
+    total_spots = len(PARKING_SPOTS)
+    return frame, free_count, total_spots - free_count
 
 
-    return img, spaceCounter, totalSpaces - spaceCounter
-
-def generate_frames():
+def frame_generator():
+    """Stream frames to browser with bounding boxes."""
     while True:
-        success, img = cap.read()
+        success, frame = video_stream.read()
         if not success:
             break
 
-        img = cv2.resize(img, (1280, 720))
-        img, free_spaces, occupied_spaces = checkParkingSpace(img)
-        ret, buffer = cv2.imencode('.jpg', img)
-        img = buffer.tobytes()
+        frame = cv2.resize(frame, (1280, 720))
+        frame, _, _ = analyze_frame(frame)
 
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + img + b'\r\n')
+        ret, buffer = cv2.imencode(".jpg", frame)
+        yield (b"--frame\r\n"
+               b"Content-Type: image/jpeg\r\n\r\n" + buffer.tobytes() + b"\r\n")
 
-@app.route('/')
-def index():
-    return render_template('index.html')
 
-@app.route('/video_feed')
+@app.route("/")
+def home():
+    """Render dashboard page."""
+    return render_template("index.html")
+
+
+@app.route("/video_feed")
 def video_feed():
-    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    """Video stream route for browser."""
+    return Response(frame_generator(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
-@app.route('/space_count')
-def space_count():
-    success, img = cap.read()
+
+@app.route("/space_count")
+def get_space_count():
+    """Return current free/occupied space count as JSON."""
+    success, frame = video_stream.read()
     if success:
-        img = cv2.resize(img, (1280, 720))
-        _, free_spaces, occupied_spaces = checkParkingSpace(img)
-        return jsonify(free=free_spaces, occupied=occupied_spaces)
+        frame = cv2.resize(frame, (1280, 720))
+        _, free, occupied = analyze_frame(frame)
+        return jsonify(free=free, occupied=occupied)
     return jsonify(free=0, occupied=0)
+
 
 if __name__ == "__main__":
     app.run(debug=True)
