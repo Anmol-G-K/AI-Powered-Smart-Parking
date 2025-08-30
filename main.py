@@ -3,6 +3,7 @@ import cv2
 import pickle
 import numpy as np
 from keras.models import load_model
+import os
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -22,6 +23,18 @@ with open("carposition.pkl", "rb") as f:
 
 # Dimensions of each parking region
 SPOT_W, SPOT_H = 130, 65
+
+# Load college logo
+LOGO_PATH = "static/assets/college_logo.png"
+college_logo = None
+if os.path.exists(LOGO_PATH):
+    college_logo = cv2.imread(LOGO_PATH, cv2.IMREAD_UNCHANGED)
+    if college_logo is not None:
+        # Resize logo to appropriate size (adjust as needed)
+        logo_height, logo_width = college_logo.shape[:2]
+        target_height = 80
+        target_width = int((logo_width / logo_height) * target_height)
+        college_logo = cv2.resize(college_logo, (target_width, target_height))
 
 
 def analyze_frame(frame):
@@ -68,6 +81,32 @@ def analyze_frame(frame):
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, txt_color, 1)
 
     total_spots = len(PARKING_SPOTS)
+    
+    # # Add college logo overlay to the left side of the frame
+    # if college_logo is not None:
+    #     try:
+    #         # Position logo in top-left corner with some padding
+    #         logo_height, logo_width = college_logo.shape[:2]
+    #         x_offset, y_offset = 1000, 20
+            
+    #         # Create a region of interest (ROI) for the logo
+    #         roi = frame[y_offset:y_offset + logo_height, x_offset:x_offset + logo_width]
+            
+    #         # If logo has alpha channel (PNG with transparency)
+    #         if college_logo.shape[2] == 4:
+    #             # Extract alpha channel
+    #             alpha = college_logo[:, :, 3] / 255.0
+    #             alpha = np.expand_dims(alpha, axis=-1)
+                
+    #             # Blend logo with frame
+    #             blended = (college_logo[:, :, :3] * alpha + roi * (1 - alpha)).astype(np.uint8)
+    #             frame[y_offset:y_offset + logo_height, x_offset:x_offset + logo_width] = blended
+    #         else:
+    #             # If no alpha channel, just overlay the logo
+    #             frame[y_offset:y_offset + logo_height, x_offset:x_offset + logo_width] = college_logo[:, :, :3]
+    #     except Exception as e:
+    #         print(f"Error overlaying logo: {e}")
+    
     return frame, free_count, total_spots - free_count
 
 
